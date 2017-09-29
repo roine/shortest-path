@@ -5,6 +5,7 @@ module Tile
         , ParentTile
         , toColour
         , pointToDirection
+        , directionToArrow
         , directionToPoint
         , dimensions
         , Msg
@@ -18,6 +19,11 @@ import Svg.Attributes exposing (..)
 import Svg.Events
 import Dict exposing (Dict)
 import Model exposing (Model, Direction(..))
+import ColorMath
+import Color
+import Color.Manipulate
+import Color.Convert
+import Color.Blending
 
 
 -- Tile
@@ -25,12 +31,16 @@ import Model exposing (Model, Direction(..))
 
 type Tile
     = Wall
-    | Empty
+    | Empty Weight
     | Start
-    | End
-    | Visited
-    | Edge
-    | Path
+    | End Weight
+    | Visited Weight
+    | Edge Weight
+    | Path Weight
+
+
+type alias Weight =
+    Int
 
 
 type alias CurrentTile =
@@ -47,23 +57,33 @@ toColour tile =
         Wall ->
             "url(#wall)"
 
-        Empty ->
-            "white"
+        Empty weight ->
+            if weight == 1 then
+                "#fff"
+            else
+                Color.Manipulate.weightedMix (Color.rgb 77 54 25) (Color.rgb 183 229 0) (toFloat weight / 10)
+                    |> Color.Convert.colorToHex
 
         Start ->
-            "#38A849"
+            "#aa6001"
 
-        End ->
-            "#5037A4"
+        End weight ->
+            "#eb1c24"
 
-        Visited ->
-            "#E4F6F0"
+        Visited weight ->
+            if weight == 1 then
+                Color.rgb 228 246 240
+                    |> Color.Convert.colorToHex
+            else
+                Color.Manipulate.weightedMix (Color.rgb 77 54 25) (Color.rgb 183 229 0) (toFloat weight / 10)
+                    |> Color.Blending.overlay (Color.rgba 228 246 240 0.6)
+                    |> Color.Convert.colorToHex
 
-        Edge ->
+        Edge _ ->
             "#88AFD7"
 
-        Path ->
-            "#C76957"
+        Path _ ->
+            "#C1B244"
 
 
 pointToDirection : ( Int, Int ) -> ( Int, Int ) -> Direction
@@ -101,6 +121,22 @@ directionToPoint direction ( currentPointX, currentPointY ) =
             ( currentPointX, currentPointY + 1 )
 
 
+directionToArrow : Direction -> String
+directionToArrow direction =
+    case direction of
+        West ->
+            "←"
+
+        East ->
+            "→"
+
+        South ->
+            "↓"
+
+        North ->
+            "↑"
+
+
 dimensions : Int
 dimensions =
     10
@@ -128,18 +164,18 @@ update msg model =
                         (\maybeTile ->
                             case maybeTile of
                                 Just Wall ->
-                                    Just Empty
+                                    Just (Empty 1)
 
-                                Just Empty ->
+                                Just (Empty _) ->
                                     Just Wall
 
-                                Just Path ->
+                                Just (Path _) ->
                                     Just Wall
 
-                                Just Visited ->
+                                Just (Visited _) ->
                                     Just Wall
 
-                                Just Edge ->
+                                Just (Edge _) ->
                                     Just Wall
 
                                 Nothing ->
@@ -159,7 +195,16 @@ update msg model =
             )
 
         MakeWall points ->
-            ( { model | points = Dict.insert points Wall model.points }, Cmd.none )
+            ( { model
+                | points = Dict.insert points Wall model.points
+                , walls =
+                    if Set.member points model.walls then
+                        Set.remove points model.walls
+                    else
+                        Set.insert points model.walls
+              }
+            , Cmd.none
+            )
 
         ShowPosition point ->
             ( { model | mouseTilePosition = point }, Cmd.none )
@@ -177,7 +222,7 @@ view ( pointX, pointY ) { points, isMouseDown } =
     let
         tileType =
             Dict.get ( pointX, pointY ) points
-                |> Maybe.withDefault Empty
+                |> Maybe.withDefault (Empty 1)
     in
         rect
             [ x <| toString (pointX * dimensions)
@@ -192,6 +237,6 @@ view ( pointX, pointY ) { points, isMouseDown } =
                 if isMouseDown then
                     MakeWall ( pointX, pointY )
                 else
-                    ShowPosition ( ( pointX, pointY ), Maybe.withDefault Empty <| Dict.get ( pointX, pointY ) points )
+                    ShowPosition ( ( pointX, pointY ), Maybe.withDefault (Empty 1) <| Dict.get ( pointX, pointY ) points )
             ]
             []

@@ -36,11 +36,21 @@ update msg model =
                             , visited = Dict.empty
                             , edges = Set.fromList [ model.start ]
                             , points =
-                                Dict.fromList
-                                    (List.map (\w -> ( w, Tile.Wall )) (Set.toList model.walls)
-                                        |> List.append [ ( model.start, Tile.Start ) ]
-                                        |> List.append [ ( model.end, Tile.End ) ]
+                                List.foldl
+                                    (\visited points ->
+                                        Dict.update visited
+                                            (\v ->
+                                                case v of
+                                                    Just (Visited weight) ->
+                                                        Just (Empty weight)
+
+                                                    otherwise ->
+                                                        otherwise
+                                            )
+                                            points
                                     )
+                                    model.points
+                                    (Dict.keys model.visited)
                         }
 
                 go model =
@@ -97,7 +107,22 @@ runBfs model =
 
         newPoints : Dict ( Int, Int ) Tile
         newPoints =
-            Set.foldl (\newEdge points -> Dict.insert newEdge Edge points)
+            Set.foldl
+                (\newEdge points ->
+                    Dict.update newEdge
+                        (\maybeTile ->
+                            case maybeTile of
+                                Just (Empty weight) ->
+                                    Just (Edge weight)
+
+                                Just (End weight) ->
+                                    Just (End weight)
+
+                                _ ->
+                                    Just (Edge 1)
+                        )
+                        points
+                )
                 model.points
                 newEdges
                 |> updateOldEdges
@@ -110,8 +135,8 @@ runBfs model =
                     Dict.update pos
                         (\maybe ->
                             case maybe of
-                                Just Edge ->
-                                    Just Visited
+                                Just (Edge weight) ->
+                                    Just (Visited weight)
 
                                 _ ->
                                     maybe
@@ -133,13 +158,15 @@ runBfs model =
         maybeAddPath points =
             case newStatus of
                 Found path ->
-                    Set.foldl
-                        (\( current, parent ) points ->
-                            Dict.insert current Path points
-                                |> Dict.insert parent Path
+                    List.foldl
+                        (\current points ->
+                            if current == model.end || current == model.start then
+                                points
+                            else
+                                Dict.insert current (Path 1) points
                         )
                         points
-                        path
+                        (Dict.keys path)
 
                 _ ->
                     points
@@ -198,18 +225,18 @@ maybeToBool maybeValue =
             False
 
 
-getPath : ( Int, Int ) -> Dict ( Int, Int ) Direction -> Set ( CurrentTile, ParentTile )
+getPath : ( Int, Int ) -> Dict ( Int, Int ) Direction -> Dict CurrentTile ParentTile
 getPath from visited =
     let
         go from acc =
             case Dict.get from visited of
                 Just direction ->
-                    go (Tile.directionToPoint direction from) (Set.insert ( from, Tile.directionToPoint direction from ) acc)
+                    go (Tile.directionToPoint direction from) (Dict.insert from (Tile.directionToPoint direction from) acc)
 
                 Nothing ->
                     acc
     in
-        go from Set.empty
+        go from Dict.empty
 
 
 viewMenu : Model Tile -> Html Msg
@@ -224,7 +251,7 @@ viewMenu model =
 
 viewInstantButton : Model Tile -> Html Msg
 viewInstantButton model =
-    button [ onClick Instant, disabled <| hasFound model.status ] [ text "Instant" ]
+    button [ onClick Instant ] [ text "Instant" ]
 
 
 viewStepButton : Model Tile -> Html Msg

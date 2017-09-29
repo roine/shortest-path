@@ -5,6 +5,7 @@ module Model
         , Algo(..)
         , Status(..)
         , Direction(..)
+        , mapFound
         )
 
 import Time exposing (Time)
@@ -60,5 +61,14 @@ type Status
     = New
     | Running
     | Paused
-    | Found (Set ( ( Int, Int ), ( Int, Int ) ))
+    | Found (Dict ( Int, Int ) ( Int, Int ))
     | NotFound
+
+
+mapFound fn status =
+    case status of
+        Found result ->
+            Found (fn result)
+
+        otherwise ->
+            otherwise

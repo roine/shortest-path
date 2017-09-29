@@ -1,4 +1,4 @@
-module Grid exposing (Msg, update, draw, isWithin, dimensions, view)
+module Grid exposing (Msg, update, draw, isWithin, dimensions, width_, height_, view)
 
 import Random exposing (Generator)
 import Dict exposing (Dict)
@@ -6,7 +6,7 @@ import Set exposing (Set)
 import Svg exposing (..)
 import Svg.Attributes exposing (height, stopColor, offset, y1, y2, x1, x2, id, width)
 import Svg.Events exposing (onMouseDown, onMouseUp)
-import Html
+import Html exposing (..)
 import Html.Attributes
 import Tile exposing (Tile(..))
 import Model exposing (Status(..), Model)
@@ -14,7 +14,15 @@ import Model exposing (Status(..), Model)
 
 dimensions : Int
 dimensions =
-    20
+    width_ * height_
+
+
+width_ =
+    100
+
+
+height_ =
+    50
 
 
 
@@ -43,7 +51,7 @@ update msg model =
 
         AddEndPoint points ->
             ( { model
-                | points = Dict.insert points End model.points
+                | points = Dict.insert points (End 1) model.points
                 , end = points
               }
             , Cmd.none
@@ -57,7 +65,7 @@ update msg model =
                         |> Dict.union model.points
                 , walls =
                     Set.fromList listOfPoints
-                        |> Set.remove (Debug.log "start" model.start)
+                        |> Set.remove model.start
                         |> Set.remove model.end
               }
             , Cmd.none
@@ -74,24 +82,24 @@ update msg model =
                 ( newModel, Cmd.map TileMsg cmd )
 
 
-walls : Int -> Int
-walls density =
-    dimensions * (round ((toFloat density) / 10 * (toFloat dimensions)))
-
-
 randomStart : Generator ( Int, Int )
 randomStart =
-    Random.pair (Random.int 0 (dimensions - 1)) (Random.int 0 (dimensions - 1))
+    Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
 
 
 randomEnd : Generator ( Int, Int )
 randomEnd =
-    Random.pair (Random.int 0 (dimensions - 1)) (Random.int 0 (dimensions - 1))
+    Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
+
+
+walls : Int -> Int
+walls density =
+    toFloat (density * dimensions) / 10 |> round
 
 
 randomWalls : Int -> Generator (List ( Int, Int ))
 randomWalls density =
-    Random.list (walls density) <| Random.pair (Random.int 0 (dimensions - 1)) (Random.int 0 (dimensions - 1))
+    Random.list (walls density) <| Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
 
 
 draw : { a | density : Int } -> Cmd Msg
@@ -105,7 +113,7 @@ draw { density } =
 
 isWithin : ( Int, Int ) -> Bool
 isWithin ( pointX, pointY ) =
-    pointX >= 0 && pointY >= 0 && pointX <= dimensions - 1 && pointY <= dimensions - 1
+    pointX >= 0 && pointY >= 0 && pointX <= width_ - 1 && pointY <= height_ - 1
 
 
 
@@ -115,30 +123,35 @@ isWithin ( pointX, pointY ) =
 view : Model Tile -> Svg Msg
 view model =
     let
-        points =
-            (List.range 1 dimensions)
+        widthList =
+            (List.range 1 width_)
+
+        heightList =
+            (List.range 1 height_)
     in
-        svg
-            [ width <| toString <| Tile.dimensions * dimensions
-            , height <| toString <| Tile.dimensions * dimensions
-            , Html.Attributes.map never gridStyle
-            , onMouseDown (MouseDown True)
-            , onMouseUp (MouseDown False)
+        div [ mainStyle ]
+            [ svg
+                [ width <| toString <| Tile.dimensions * width_
+                , height <| toString <| Tile.dimensions * height_
+                , Html.Attributes.map never gridStyle
+                , onMouseDown (MouseDown True)
+                , onMouseUp (MouseDown False)
+                ]
+                ([ defs []
+                    [ Svg.map never <| gradientWall "wall" ]
+                 ]
+                    ++ (List.concatMap
+                            (\y ->
+                                List.map
+                                    (\x ->
+                                        Svg.map TileMsg <| Tile.view ( x - 1, y - 1 ) model
+                                    )
+                                    widthList
+                            )
+                            heightList
+                       )
+                )
             ]
-            ([ defs []
-                [ Svg.map never <| gradientWall "wall" ]
-             ]
-                ++ (List.concatMap
-                        (\y ->
-                            List.map
-                                (\x ->
-                                    Svg.map TileMsg <| Tile.view ( x - 1, y - 1 ) model
-                                )
-                                points
-                        )
-                        points
-                   )
-            )
 
 
 gridStyle : Html.Attribute Never
@@ -147,6 +160,16 @@ gridStyle =
         [ ( "margin", "0 auto" )
         , ( "display", "block" )
         , ( "border", "1px solid lightblue" )
+        ]
+
+
+mainStyle =
+    Html.Attributes.style
+        [ ( "width", "85vw" )
+        , ( "padding", "10px" )
+        , ( "box-sizing", "border-box" )
+        , ( "display", "inline-block" )
+        , ( "vertical-align", "top" )
         ]
 
 

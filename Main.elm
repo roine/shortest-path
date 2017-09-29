@@ -16,7 +16,7 @@ import Tile exposing (Tile(..))
 
 init : ( Model Tile, Cmd Msg )
 init =
-    ( Model.initialModel Empty
+    ( Model.initialModel (Empty 1)
     , Cmd.map GridMsg (Grid.draw (Model.initialModel Empty))
     )
 
@@ -63,9 +63,8 @@ update msg model =
 view : Model Tile -> Html Msg
 view model =
     div []
-        [ Html.map GridMsg (Grid.view model)
-        , Html.map MenuMsg (Menu.view model)
-        , Html.text <| toString model
+        [ Html.map MenuMsg (Menu.view model)
+        , Html.map GridMsg (Grid.view model)
         ]
 
 
