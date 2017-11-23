@@ -1,16 +1,16 @@
-module Menu exposing (Msg, update, view)
+module Page.Bfs.Menu exposing (Msg, update, view)
 
 import Dict
 import Html exposing (..)
 import Html.Attributes exposing (value, selected, style)
 import Html.Events exposing (onInput, onClick)
 import Time
-import Model exposing (Algo(..), Status(..), Model)
-import Grid
-import Tile exposing (Tile)
-import Algo.Bfs as Bfs
-import Algo.Dijkstra as Dijkstra
+import Page.Bfs.Model exposing (Model, initialModel, Tile(..), Status(..))
+import Page.Bfs.Grid as Grid
+import Page.Bfs.Tile as Tile
+import Page.Bfs.Algo as Bfs
 import Set
+import Task
 
 
 -- UPDATE
@@ -18,39 +18,50 @@ import Set
 
 type Msg
     = ChangeSpeed Float
-    | Redraw
+    | Redraw (Maybe Int)
     | ChangeWallDensity Int
     | GridMsg Grid.Msg
     | BfsMsg Bfs.Msg
-    | DijkstraMsg Dijkstra.Msg
     | NoOp
 
 
-update : Msg -> Model Tile -> ( Model Tile, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ChangeSpeed speed ->
-            ( { model | speed = Time.millisecond * speed }, Cmd.none )
+            let
+                settings =
+                    model.settings
+            in
+                ( { model | settings = { settings | speed = Time.millisecond * speed } }, Cmd.none )
 
-        Redraw ->
+        Redraw maybeSeed ->
             ( { model
-                | points = .points <| Model.initialModel <| Tile.Empty 1
-                , algorithm = .algorithm <| Model.initialModel <| Tile.Empty 1
-                , status = .status <| Model.initialModel <| Tile.Empty 1
-                , edges = .edges <| Model.initialModel <| Tile.Empty 1
-                , visited = .visited <| Model.initialModel <| Tile.Empty 1
+                | points = .points initialModel
+                , status = .status initialModel
+                , edges = .edges initialModel
+                , visited = .visited initialModel
               }
-            , Cmd.map GridMsg <| Grid.draw model
+            , case maybeSeed of
+                Nothing ->
+                    Cmd.batch [ Task.perform (always (GridMsg (Grid.addRandom (model.seed + 1)))) (Task.succeed ()) ]
+
+                Just seed ->
+                    Cmd.batch [ Task.perform (always (GridMsg (Grid.addRandom seed))) (Task.succeed ()) ]
             )
 
         ChangeWallDensity percentage ->
-            ( { model
-                | points = Dict.empty
-                , algorithm = Nothing
-                , density = percentage
-              }
-            , Cmd.map GridMsg <| Grid.draw { model | density = percentage }
-            )
+            let
+                settings =
+                    model.settings
+            in
+                ( { model
+                    | points = Dict.empty
+                    , settings =
+                        { settings | density = percentage }
+                  }
+                , Cmd.batch [ Task.perform (always (GridMsg (Grid.addRandom model.seed))) (Task.succeed ()) ]
+                )
 
         GridMsg subMsg ->
             let
@@ -66,13 +77,6 @@ update msg model =
             in
                 ( newModel, Cmd.none )
 
-        DijkstraMsg subMsg ->
-            let
-                ( newModel, cmd ) =
-                    Dijkstra.update subMsg model
-            in
-                ( newModel, Cmd.map DijkstraMsg cmd )
-
         NoOp ->
             ( model, Cmd.none )
 
@@ -81,13 +85,13 @@ update msg model =
 -- VIEW
 
 
-view : Model Tile -> Html Msg
+view : Model -> Html Msg
 view model =
     div [ menuStyle ]
         [ div [ menuHeadStyle ]
             [ div
                 [ style
-                    [ ( "background", Tile.toColour Tile.Start )
+                    [ ( "background", Tile.toColour Start )
                     , ( "color", "#fff" )
                     , ( "padding", "10px" )
                     ]
@@ -95,7 +99,7 @@ view model =
                 [ text "Home" ]
             , div
                 [ style
-                    [ ( "background", Tile.toColour (Tile.End 1) )
+                    [ ( "background", Tile.toColour (End) )
                     , ( "color", "#fff" )
                     , ( "padding", "10px" )
                     ]
@@ -118,7 +122,7 @@ view model =
                 ]
                 (List.map
                     (\pc ->
-                        option [ value <| toString pc, selected (model.density == pc) ]
+                        option [ value <| toString pc, selected (model.settings.density == pc) ]
                             [ Html.text <| toString (pc * 10) ]
                     )
                     (List.range 0 7)
@@ -138,14 +142,30 @@ view model =
                     ]
                     (List.map
                         (\speed ->
-                            option [ value <| toString speed, selected (model.speed == speed) ] [ Html.text <| toString <| speed ]
+                            option [ value <| toString speed, selected (model.settings.speed == speed) ] [ Html.text <| toString <| speed ]
                         )
                         [ 1, 100, 300, 500, 800, 1000, 60000 ]
                     )
                 ]
             , div []
-                [ button [ onClick Redraw ] [ Html.text "Generate" ] ]
-            , div [] [ text <| toString model.mouseTilePosition ]
+                [ button [ onClick (Redraw Nothing) ] [ Html.text "Generate" ] ]
+            , span []
+                [ text "Seed"
+                , input
+                    [ value <| toString model.seed
+                    , onInput
+                        (\str ->
+                            case String.toInt str of
+                                Err _ ->
+                                    NoOp
+
+                                Ok seed ->
+                                    Redraw (Just seed)
+                        )
+                    ]
+                    []
+                ]
+            , div [] [ text <| toString model.settings.mouseTilePosition ]
             , div
                 [ style
                     [ ( "max-height", "100px" )
@@ -176,7 +196,6 @@ view model =
                         [ text <| toString otherwise ]
                 )
             , Html.map BfsMsg (Bfs.viewMenu model)
-            , Html.map DijkstraMsg (Dijkstra.viewMenu model)
             ]
         ]
 

@@ -1,7 +1,6 @@
-module Tile
+module Page.Bfs.Tile
     exposing
-        ( Tile(..)
-        , CurrentTile
+        ( CurrentTile
         , ParentTile
         , toColour
         , pointToDirection
@@ -18,25 +17,15 @@ import Svg exposing (..)
 import Svg.Attributes exposing (..)
 import Svg.Events
 import Dict exposing (Dict)
-import Model exposing (Model, Direction(..))
 import ColorMath
 import Color
 import Color.Manipulate
 import Color.Convert
 import Color.Blending
+import Page.Bfs.Model as Model exposing (Model, Direction(..), Tile(..))
 
 
 -- Tile
-
-
-type Tile
-    = Wall
-    | Empty Weight
-    | Start
-    | End Weight
-    | Visited Weight
-    | Edge Weight
-    | Path Weight
 
 
 type alias Weight =
@@ -57,32 +46,23 @@ toColour tile =
         Wall ->
             "url(#wall)"
 
-        Empty weight ->
-            if weight == 1 then
-                "#fff"
-            else
-                Color.Manipulate.weightedMix (Color.rgb 77 54 25) (Color.rgb 183 229 0) (toFloat weight / 10)
-                    |> Color.Convert.colorToHex
+        Empty ->
+            "#fff"
 
         Start ->
             "#aa6001"
 
-        End weight ->
+        End ->
             "#eb1c24"
 
-        Visited weight ->
-            if weight == 1 then
-                Color.rgb 228 246 240
-                    |> Color.Convert.colorToHex
-            else
-                Color.Manipulate.weightedMix (Color.rgb 77 54 25) (Color.rgb 183 229 0) (toFloat weight / 10)
-                    |> Color.Blending.overlay (Color.rgba 228 246 240 0.6)
-                    |> Color.Convert.colorToHex
+        Visited ->
+            Color.rgb 228 246 240
+                |> Color.Convert.colorToHex
 
-        Edge _ ->
+        Edge ->
             "#88AFD7"
 
-        Path _ ->
+        Path ->
             "#C1B244"
 
 
@@ -153,7 +133,7 @@ type Msg
     | NoOp
 
 
-update : Msg -> Model Tile -> ( Model Tile, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         ToggleWall points ->
@@ -164,18 +144,18 @@ update msg model =
                         (\maybeTile ->
                             case maybeTile of
                                 Just Wall ->
-                                    Just (Empty 1)
+                                    Just (Empty)
 
-                                Just (Empty _) ->
+                                Just Empty ->
                                     Just Wall
 
-                                Just (Path _) ->
+                                Just Path ->
                                     Just Wall
 
-                                Just (Visited _) ->
+                                Just Visited ->
                                     Just Wall
 
-                                Just (Edge _) ->
+                                Just Edge ->
                                     Just Wall
 
                                 Nothing ->
@@ -207,7 +187,11 @@ update msg model =
             )
 
         ShowPosition point ->
-            ( { model | mouseTilePosition = point }, Cmd.none )
+            let
+                settings =
+                    model.settings
+            in
+                ( { model | settings = { settings | mouseTilePosition = Just point } }, Cmd.none )
 
         NoOp ->
             ( model, Cmd.none )
@@ -217,12 +201,12 @@ update msg model =
 --VIEW
 
 
-view : ( Int, Int ) -> Model Tile -> Svg Msg
-view ( pointX, pointY ) { points, isMouseDown } =
+view : ( Int, Int ) -> Model -> Svg Msg
+view ( pointX, pointY ) { points } =
     let
         tileType =
             Dict.get ( pointX, pointY ) points
-                |> Maybe.withDefault (Empty 1)
+                |> Maybe.withDefault (Empty)
     in
         rect
             [ x <| toString (pointX * dimensions)
@@ -234,9 +218,6 @@ view ( pointX, pointY ) { points, isMouseDown } =
             , strokeWidth "1"
             , Svg.Events.onClick (ToggleWall ( pointX, pointY ))
             , Svg.Events.onMouseOver <|
-                if isMouseDown then
-                    MakeWall ( pointX, pointY )
-                else
-                    ShowPosition ( ( pointX, pointY ), Maybe.withDefault (Empty 1) <| Dict.get ( pointX, pointY ) points )
+                ShowPosition ( ( pointX, pointY ), Maybe.withDefault (Empty) <| Dict.get ( pointX, pointY ) points )
             ]
             []

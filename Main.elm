@@ -1,24 +1,31 @@
 module Main exposing (main)
 
+import Dict
 import Html exposing (..)
 import Html.Attributes exposing (type_)
 import Html.Events exposing (onClick)
 import Time
-import Model exposing (Model, Algo(..), Status(..))
-import Algo.Bfs as Bfs
-import Menu
-import Grid
-import Tile exposing (Tile(..))
+import Navigation
+import UrlParser as Url exposing ((</>), (<?>), s, int, stringParam, top)
+import Route exposing (Route(..), route)
+import Model exposing (Model)
+import Page.Bfs
+import Page.Bfs.Model exposing (Tile(..), Status(..))
+import Set
 
 
 -- MODEL
 
 
-init : ( Model Tile, Cmd Msg )
-init =
-    ( Model.initialModel (Empty 1)
-    , Cmd.map GridMsg (Grid.draw (Model.initialModel Empty))
-    )
+init : Navigation.Location -> ( Model, Cmd Msg )
+init location =
+    let
+        initialModel =
+            Model.initialModel
+    in
+        ( initialModel
+        , Cmd.batch [ Cmd.map BfsMsg (Page.Bfs.initialCmd initialModel.bfs) ]
+        )
 
 
 
@@ -26,74 +33,80 @@ init =
 
 
 type Msg
-    = MenuMsg Menu.Msg
-    | GridMsg Grid.Msg
-    | BfsMsg Bfs.Msg
+    = BfsMsg Page.Bfs.Msg
+    | UrlChange Navigation.Location
+    | NewUrl String
 
 
-update : Msg -> Model Tile -> ( Model Tile, Cmd Msg )
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
-        MenuMsg subMsg ->
-            let
-                ( newModel, cmd ) =
-                    Menu.update subMsg model
-            in
-                ( newModel, Cmd.map MenuMsg cmd )
-
-        GridMsg subMsg ->
-            let
-                ( newModel, cmd ) =
-                    Grid.update subMsg model
-            in
-                ( newModel, Cmd.map GridMsg cmd )
-
         BfsMsg subMsg ->
             let
-                newModel =
-                    Bfs.update subMsg model
+                ( newModel, cmd ) =
+                    Page.Bfs.update subMsg model.bfs
             in
-                ( newModel, Cmd.none )
+                ( { model | bfs = newModel }, Cmd.map BfsMsg cmd )
+
+        UrlChange location ->
+            ( { model | history = Url.parsePath route location }
+            , Cmd.none
+            )
+
+        NewUrl url ->
+            ( model
+            , Navigation.newUrl url
+            )
 
 
 
 -- VIEW
 
 
-view : Model Tile -> Html Msg
+view : Model -> Html Msg
 view model =
-    div []
-        [ Html.map MenuMsg (Menu.view model)
-        , Html.map GridMsg (Grid.view model)
-        ]
+    let
+        bfs =
+            model.bfs
+    in
+        div []
+            [ button [ onClick (NewUrl "dijkstra") ] [ text "dijsktra" ]
+            , button [ onClick (NewUrl "/") ] [ text "bfs" ]
+            , viewRoute model
+            ]
+
+
+viewRoute { history, bfs } =
+    case history of
+        Nothing ->
+            text "Not Found"
+
+        Just route ->
+            case route of
+                BfsRoute ->
+                    Html.map BfsMsg
+                        (Page.Bfs.view bfs)
+
+                DijkstraRoute ->
+                    text "dijkstra"
 
 
 
 -- SUBSCRIPTIONS
 
 
-subscriptions : Model Tile -> Sub Msg
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.algorithm of
-        Nothing ->
-            Sub.none
-
-        Just algo ->
-            case model.status of
-                Running ->
-                    Sub.map BfsMsg (Bfs.subscriptions model)
-
-                _ ->
-                    Sub.none
+    Sub.batch [ Sub.map BfsMsg (Page.Bfs.subscriptions model.bfs) ]
 
 
 
 -- INIT
 
 
-main : Program Never (Model Tile) Msg
+main : Program Never Model Msg
 main =
-    program
+    Navigation.program UrlChange
         { init = init
         , update = update
         , subscriptions = subscriptions

@@ -1,20 +1,20 @@
-module Algo.Bfs exposing (Msg, update, viewMenu, subscriptions)
+module Page.Bfs.Algo exposing (Msg, update, viewMenu, subscriptions)
 
 import Dict exposing (Dict)
 import Set exposing (Set)
-import Model
-    exposing
-        ( Model
-        , Status(..)
-        , Algo(..)
-        , Direction(..)
-        )
-import Tile exposing (Tile(..), CurrentTile, ParentTile)
-import Grid
 import Html exposing (..)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (disabled)
 import Time
+import Page.Bfs.Model as Model
+    exposing
+        ( Model
+        , Status(..)
+        , Direction(..)
+        , Tile(..)
+        )
+import Page.Bfs.Tile as Tile exposing (CurrentTile, ParentTile)
+import Page.Bfs.Grid as Grid
 
 
 type Msg
@@ -24,7 +24,7 @@ type Msg
     | Pause
 
 
-update : Msg -> Model Tile -> Model Tile
+update : Msg -> Model -> Model
 update msg model =
     case msg of
         Instant ->
@@ -41,8 +41,8 @@ update msg model =
                                         Dict.update visited
                                             (\v ->
                                                 case v of
-                                                    Just (Visited weight) ->
-                                                        Just (Empty weight)
+                                                    Just Visited ->
+                                                        Just (Empty)
 
                                                     otherwise ->
                                                         otherwise
@@ -75,15 +75,14 @@ update msg model =
 
         Play ->
             { model
-                | algorithm = Just Bfs
-                , status = Running
+                | status = Running
             }
 
         Pause ->
             { model | status = Paused }
 
 
-runBfs : Model Tile -> Model Tile
+runBfs : Model -> Model
 runBfs model =
     let
         newEdges : Set ( Int, Int )
@@ -112,14 +111,14 @@ runBfs model =
                     Dict.update newEdge
                         (\maybeTile ->
                             case maybeTile of
-                                Just (Empty weight) ->
-                                    Just (Edge weight)
+                                Just Empty ->
+                                    Just (Edge)
 
-                                Just (End weight) ->
-                                    Just (End weight)
+                                Just End ->
+                                    Just (End)
 
                                 _ ->
-                                    Just (Edge 1)
+                                    Just (Edge)
                         )
                         points
                 )
@@ -135,8 +134,8 @@ runBfs model =
                     Dict.update pos
                         (\maybe ->
                             case maybe of
-                                Just (Edge weight) ->
-                                    Just (Visited weight)
+                                Just Edge ->
+                                    Just (Visited)
 
                                 _ ->
                                     maybe
@@ -163,7 +162,7 @@ runBfs model =
                             if current == model.end || current == model.start then
                                 points
                             else
-                                Dict.insert current (Path 1) points
+                                Dict.insert current (Path) points
                         )
                         points
                         (Dict.keys path)
@@ -187,7 +186,7 @@ Assuming the edge has a wall on top and bottom and the end is its left hand side
     [(False, (2,1)), (True, (0,1))]
 
 -}
-findEdges : Model Tile -> ( Int, Int ) -> List ( Int, Int )
+findEdges : Model -> ( Int, Int ) -> List ( Int, Int )
 findEdges { walls, visited, start } ( x1, y1 ) =
     let
         surroundings =
@@ -239,27 +238,26 @@ getPath from visited =
         go from Dict.empty
 
 
-viewMenu : Model Tile -> Html Msg
+viewMenu : Model -> Html Msg
 viewMenu model =
     div []
-        [ h1 [] [ Html.text "Bfs" ]
-        , div [] [ viewPlayButton model ]
+        [ div [] [ viewPlayButton model ]
         , div [] [ viewStepButton model ]
         , div [] [ viewInstantButton model ]
         ]
 
 
-viewInstantButton : Model Tile -> Html Msg
+viewInstantButton : Model -> Html Msg
 viewInstantButton model =
     button [ onClick Instant ] [ text "Instant" ]
 
 
-viewStepButton : Model Tile -> Html Msg
+viewStepButton : Model -> Html Msg
 viewStepButton model =
     button [ onClick Step, disabled <| hasFound model.status ] [ Html.text "Step by step" ]
 
 
-viewPlayButton : Model Tile -> Html Msg
+viewPlayButton : Model -> Html Msg
 viewPlayButton model =
     if model.status == Running then
         button [ onClick Pause ] [ Html.text "Pause" ]
@@ -277,6 +275,6 @@ hasFound status =
             False
 
 
-subscriptions : Model Tile -> Sub Msg
+subscriptions : Model -> Sub Msg
 subscriptions model =
-    Time.every model.speed (always Step)
+    Time.every model.settings.speed (always Step)
