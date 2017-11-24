@@ -34,10 +34,10 @@ update msg model =
     case msg of
         BfsMsg subMsg ->
             let
-                newModel =
+                ( newModel, cmd ) =
                     Bfs.update subMsg model
             in
-                ( newModel, Cmd.none )
+                ( newModel, Cmd.map BfsMsg cmd )
 
         GridMsg subMsg ->
             let

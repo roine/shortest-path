@@ -72,10 +72,10 @@ update msg model =
 
         BfsMsg subMsg ->
             let
-                newModel =
+                ( newModel, cmd ) =
                     Bfs.update subMsg model
             in
-                ( newModel, Cmd.none )
+                ( newModel, Cmd.map BfsMsg cmd )
 
         NoOp ->
             ( model, Cmd.none )
@@ -165,7 +165,14 @@ view model =
                     ]
                     []
                 ]
-            , div [] [ text <| toString model.settings.mouseTilePosition ]
+            , div []
+                [ case model.time.end of
+                    Nothing ->
+                        text ""
+
+                    Just end ->
+                        text <| "Found in " ++ (toString <| (end - model.time.start) / 1000) ++ "s"
+                ]
             , div
                 [ style
                     [ ( "max-height", "100px" )
@@ -196,6 +203,15 @@ view model =
                         [ text <| toString otherwise ]
                 )
             , Html.map BfsMsg (Bfs.viewMenu model)
+            , div []
+                [ text "Mouse position: "
+                , case model.settings.mouseTilePosition of
+                    Nothing ->
+                        text "Out"
+
+                    Just mousePosition ->
+                        text <| toString mousePosition
+                ]
             ]
         ]
 

@@ -17295,10 +17295,27 @@ var _user$project$Route$route = _evancz$url_parser$UrlParser$oneOf(
 		}
 	});
 var _user$project$Page_Bfs_Model$initialSettings = {density: 4, speed: _elm_lang$core$Time$millisecond * 100, mouseTilePosition: _elm_lang$core$Maybe$Nothing};
-var _user$project$Page_Bfs_Model$Model = F9(
-	function (a, b, c, d, e, f, g, h, i) {
-		return {settings: a, points: b, edges: c, status: d, walls: e, start: f, end: g, visited: h, seed: i};
-	});
+var _user$project$Page_Bfs_Model$Model = function (a) {
+	return function (b) {
+		return function (c) {
+			return function (d) {
+				return function (e) {
+					return function (f) {
+						return function (g) {
+							return function (h) {
+								return function (i) {
+									return function (j) {
+										return {settings: a, points: b, edges: c, status: d, walls: e, start: f, end: g, visited: h, seed: i, time: j};
+									};
+								};
+							};
+						};
+					};
+				};
+			};
+		};
+	};
+};
 var _user$project$Page_Bfs_Model$Settings = F3(
 	function (a, b, c) {
 		return {density: a, speed: b, mouseTilePosition: c};
@@ -17333,7 +17350,8 @@ var _user$project$Page_Bfs_Model$initialModel = {
 	start: {ctor: '_Tuple2', _0: 0, _1: 0},
 	end: {ctor: '_Tuple2', _0: 0, _1: 0},
 	visited: _elm_lang$core$Dict$empty,
-	seed: 1
+	seed: 1,
+	time: {start: 0, end: _elm_lang$core$Maybe$Nothing}
 };
 var _user$project$Page_Bfs_Model$Path = {ctor: 'Path'};
 var _user$project$Page_Bfs_Model$Edge = {ctor: 'Edge'};
@@ -18107,6 +18125,12 @@ var _user$project$Page_Bfs_Algo$runBfs = function (model) {
 		model,
 		{edges: newEdges, visited: newVisited, points: newPoints, status: newStatus});
 };
+var _user$project$Page_Bfs_Algo$SetEndTime = function (a) {
+	return {ctor: 'SetEndTime', _0: a};
+};
+var _user$project$Page_Bfs_Algo$SetStartTime = function (a) {
+	return {ctor: 'SetStartTime', _0: a};
+};
 var _user$project$Page_Bfs_Algo$update = F2(
 	function (msg, model) {
 		var _p13 = msg;
@@ -18160,18 +18184,65 @@ var _user$project$Page_Bfs_Algo$update = F2(
 								model.points,
 								_elm_lang$core$Dict$keys(model.visited))
 						}));
-				return newModel;
+				return {ctor: '_Tuple2', _0: newModel, _1: _elm_lang$core$Platform_Cmd$none};
 			case 'Step':
 				var newModel = _user$project$Page_Bfs_Algo$runBfs(model);
-				return newModel;
+				return {
+					ctor: '_Tuple2',
+					_0: newModel,
+					_1: function () {
+						var _p16 = newModel.status;
+						if (_p16.ctor === 'Found') {
+							return A2(_elm_lang$core$Task$perform, _user$project$Page_Bfs_Algo$SetEndTime, _elm_lang$core$Time$now);
+						} else {
+							return _elm_lang$core$Platform_Cmd$none;
+						}
+					}()
+				};
 			case 'Play':
-				return _elm_lang$core$Native_Utils.update(
-					model,
-					{status: _user$project$Page_Bfs_Model$Running});
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{status: _user$project$Page_Bfs_Model$Running}),
+					_1: A2(_elm_lang$core$Task$perform, _user$project$Page_Bfs_Algo$SetStartTime, _elm_lang$core$Time$now)
+				};
+			case 'Pause':
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{status: _user$project$Page_Bfs_Model$Paused}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
+			case 'SetStartTime':
+				var time = model.time;
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							time: _elm_lang$core$Native_Utils.update(
+								time,
+								{start: _p13._0, end: _elm_lang$core$Maybe$Nothing})
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
 			default:
-				return _elm_lang$core$Native_Utils.update(
-					model,
-					{status: _user$project$Page_Bfs_Model$Paused});
+				var time = model.time;
+				return {
+					ctor: '_Tuple2',
+					_0: _elm_lang$core$Native_Utils.update(
+						model,
+						{
+							time: _elm_lang$core$Native_Utils.update(
+								time,
+								{
+									end: _elm_lang$core$Maybe$Just(_p13._0)
+								})
+						}),
+					_1: _elm_lang$core$Platform_Cmd$none
+				};
 		}
 	});
 var _user$project$Page_Bfs_Algo$Pause = {ctor: 'Pause'};
@@ -18429,8 +18500,14 @@ var _user$project$Page_Bfs_Menu$update = F2(
 					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs_Menu$GridMsg, cmd)
 				};
 			case 'BfsMsg':
-				var newModel = A2(_user$project$Page_Bfs_Algo$update, _p0._0, model);
-				return {ctor: '_Tuple2', _0: newModel, _1: _elm_lang$core$Platform_Cmd$none};
+				var _p3 = A2(_user$project$Page_Bfs_Algo$update, _p0._0, model);
+				var newModel = _p3._0;
+				var cmd = _p3._1;
+				return {
+					ctor: '_Tuple2',
+					_0: newModel,
+					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs_Menu$BfsMsg, cmd)
+				};
 			default:
 				return {ctor: '_Tuple2', _0: model, _1: _elm_lang$core$Platform_Cmd$none};
 		}
@@ -18563,9 +18640,9 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 										ctor: '::',
 										_0: _elm_lang$html$Html_Events$onInput(
 											function (str) {
-												var _p3 = _elm_lang$core$String$toInt(str);
-												if (_p3.ctor === 'Ok') {
-													return _user$project$Page_Bfs_Menu$ChangeWallDensity(_p3._0);
+												var _p4 = _elm_lang$core$String$toInt(str);
+												if (_p4.ctor === 'Ok') {
+													return _user$project$Page_Bfs_Menu$ChangeWallDensity(_p4._0);
 												} else {
 													return _user$project$Page_Bfs_Menu$NoOp;
 												}
@@ -18619,9 +18696,9 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 														ctor: '::',
 														_0: _elm_lang$html$Html_Events$onInput(
 															function (str) {
-																var _p4 = _elm_lang$core$String$toFloat(str);
-																if (_p4.ctor === 'Ok') {
-																	return _user$project$Page_Bfs_Menu$ChangeSpeed(_p4._0);
+																var _p5 = _elm_lang$core$String$toFloat(str);
+																if (_p5.ctor === 'Ok') {
+																	return _user$project$Page_Bfs_Menu$ChangeSpeed(_p5._0);
 																} else {
 																	return _user$project$Page_Bfs_Menu$NoOp;
 																}
@@ -18725,12 +18802,12 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 																	ctor: '::',
 																	_0: _elm_lang$html$Html_Events$onInput(
 																		function (str) {
-																			var _p5 = _elm_lang$core$String$toInt(str);
-																			if (_p5.ctor === 'Err') {
+																			var _p6 = _elm_lang$core$String$toInt(str);
+																			if (_p6.ctor === 'Err') {
 																				return _user$project$Page_Bfs_Menu$NoOp;
 																			} else {
 																				return _user$project$Page_Bfs_Menu$Redraw(
-																					_elm_lang$core$Maybe$Just(_p5._0));
+																					_elm_lang$core$Maybe$Just(_p6._0));
 																			}
 																		}),
 																	_1: {ctor: '[]'}
@@ -18747,8 +18824,21 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 													{ctor: '[]'},
 													{
 														ctor: '::',
-														_0: _elm_lang$html$Html$text(
-															_elm_lang$core$Basics$toString(model.settings.mouseTilePosition)),
+														_0: function () {
+															var _p7 = model.time.end;
+															if (_p7.ctor === 'Nothing') {
+																return _elm_lang$html$Html$text('');
+															} else {
+																return _elm_lang$html$Html$text(
+																	A2(
+																		_elm_lang$core$Basics_ops['++'],
+																		'Found in ',
+																		A2(
+																			_elm_lang$core$Basics_ops['++'],
+																			_elm_lang$core$Basics$toString((_p7._0 - model.time.start) / 1000),
+																			's')));
+															}
+														}(),
 														_1: {ctor: '[]'}
 													}),
 												_1: {
@@ -18774,8 +18864,8 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 															_1: {ctor: '[]'}
 														},
 														function () {
-															var _p6 = model.status;
-															if (_p6.ctor === 'Found') {
+															var _p8 = model.status;
+															if (_p8.ctor === 'Found') {
 																var directionView = F2(
 																	function (parent, current) {
 																		return A2(
@@ -18793,22 +18883,22 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 																	function (current, acc) {
 																		go:
 																		while (true) {
-																			var _p7 = A2(_elm_lang$core$Dict$get, current, _p6._0);
-																			if (_p7.ctor === 'Nothing') {
+																			var _p9 = A2(_elm_lang$core$Dict$get, current, _p8._0);
+																			if (_p9.ctor === 'Nothing') {
 																				return acc;
 																			} else {
-																				var _p8 = _p7._0;
-																				var _v7 = _p8,
-																					_v8 = A2(
+																				var _p10 = _p9._0;
+																				var _v8 = _p10,
+																					_v9 = A2(
 																					_elm_lang$core$Basics_ops['++'],
 																					{
 																						ctor: '::',
-																						_0: A2(directionView, _p8, current),
+																						_0: A2(directionView, _p10, current),
 																						_1: {ctor: '[]'}
 																					},
 																					acc);
-																				current = _v7;
-																				acc = _v8;
+																				current = _v8;
+																				acc = _v9;
 																				continue go;
 																			}
 																		}
@@ -18822,7 +18912,7 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 																return {
 																	ctor: '::',
 																	_0: _elm_lang$html$Html$text(
-																		_elm_lang$core$Basics$toString(_p6)),
+																		_elm_lang$core$Basics$toString(_p8)),
 																	_1: {ctor: '[]'}
 																};
 															}
@@ -18833,7 +18923,30 @@ var _user$project$Page_Bfs_Menu$view = function (model) {
 															_elm_lang$html$Html$map,
 															_user$project$Page_Bfs_Menu$BfsMsg,
 															_user$project$Page_Bfs_Algo$viewMenu(model)),
-														_1: {ctor: '[]'}
+														_1: {
+															ctor: '::',
+															_0: A2(
+																_elm_lang$html$Html$div,
+																{ctor: '[]'},
+																{
+																	ctor: '::',
+																	_0: _elm_lang$html$Html$text('Mouse position: '),
+																	_1: {
+																		ctor: '::',
+																		_0: function () {
+																			var _p11 = model.settings.mouseTilePosition;
+																			if (_p11.ctor === 'Nothing') {
+																				return _elm_lang$html$Html$text('Out');
+																			} else {
+																				return _elm_lang$html$Html$text(
+																					_elm_lang$core$Basics$toString(_p11._0));
+																			}
+																		}(),
+																		_1: {ctor: '[]'}
+																	}
+																}),
+															_1: {ctor: '[]'}
+														}
 													}
 												}
 											}
@@ -18864,33 +18977,6 @@ var _user$project$Page_Bfs$initialCmd = function (model) {
 		_elm_lang$core$Task$succeed(
 			{ctor: '_Tuple0'}));
 };
-var _user$project$Page_Bfs$update = F2(
-	function (msg, model) {
-		var _p0 = msg;
-		switch (_p0.ctor) {
-			case 'BfsMsg':
-				var newModel = A2(_user$project$Page_Bfs_Algo$update, _p0._0, model);
-				return {ctor: '_Tuple2', _0: newModel, _1: _elm_lang$core$Platform_Cmd$none};
-			case 'GridMsg':
-				var _p1 = A2(_user$project$Page_Bfs_Grid$update, _p0._0, model);
-				var newModel = _p1._0;
-				var cmd = _p1._1;
-				return {
-					ctor: '_Tuple2',
-					_0: newModel,
-					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs$GridMsg, cmd)
-				};
-			default:
-				var _p2 = A2(_user$project$Page_Bfs_Menu$update, _p0._0, model);
-				var newModel = _p2._0;
-				var cmd = _p2._1;
-				return {
-					ctor: '_Tuple2',
-					_0: newModel,
-					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs$MenuMsg, cmd)
-				};
-		}
-	});
 var _user$project$Page_Bfs$view = function (model) {
 	return A2(
 		_elm_lang$html$Html$div,
@@ -18914,9 +19000,42 @@ var _user$project$Page_Bfs$view = function (model) {
 var _user$project$Page_Bfs$BfsMsg = function (a) {
 	return {ctor: 'BfsMsg', _0: a};
 };
+var _user$project$Page_Bfs$update = F2(
+	function (msg, model) {
+		var _p0 = msg;
+		switch (_p0.ctor) {
+			case 'BfsMsg':
+				var _p1 = A2(_user$project$Page_Bfs_Algo$update, _p0._0, model);
+				var newModel = _p1._0;
+				var cmd = _p1._1;
+				return {
+					ctor: '_Tuple2',
+					_0: newModel,
+					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs$BfsMsg, cmd)
+				};
+			case 'GridMsg':
+				var _p2 = A2(_user$project$Page_Bfs_Grid$update, _p0._0, model);
+				var newModel = _p2._0;
+				var cmd = _p2._1;
+				return {
+					ctor: '_Tuple2',
+					_0: newModel,
+					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs$GridMsg, cmd)
+				};
+			default:
+				var _p3 = A2(_user$project$Page_Bfs_Menu$update, _p0._0, model);
+				var newModel = _p3._0;
+				var cmd = _p3._1;
+				return {
+					ctor: '_Tuple2',
+					_0: newModel,
+					_1: A2(_elm_lang$core$Platform_Cmd$map, _user$project$Page_Bfs$MenuMsg, cmd)
+				};
+		}
+	});
 var _user$project$Page_Bfs$subscriptions = function (model) {
-	var _p3 = model.status;
-	if (_p3.ctor === 'Running') {
+	var _p4 = model.status;
+	if (_p4.ctor === 'Running') {
 		return A2(
 			_elm_lang$core$Platform_Sub$map,
 			_user$project$Page_Bfs$BfsMsg,
@@ -19061,7 +19180,7 @@ var _user$project$Main$main = A2(
 var Elm = {};
 Elm['Main'] = Elm['Main'] || {};
 if (typeof _user$project$Main$main !== 'undefined') {
-    _user$project$Main$main(Elm['Main'], 'Main', {"types":{"unions":{"Page.Bfs.Tile.Msg":{"args":[],"tags":{"MakeWall":["( Int, Int )"],"ShowPosition":["( ( Int, Int ), Page.Bfs.Model.Tile )"],"ToggleWall":["( Int, Int )"],"NoOp":[]}},"Page.Bfs.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Algo.Msg"],"MenuMsg":["Page.Bfs.Menu.Msg"],"GridMsg":["Page.Bfs.Grid.Msg"]}},"Page.Bfs.Grid.Msg":{"args":[],"tags":{"TileMsg":["Page.Bfs.Tile.Msg"],"AddRandomPoint":["Int"]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Page.Bfs.Model.Tile":{"args":[],"tags":{"Path":[],"Empty":[],"Start":[],"Wall":[],"End":[],"Visited":[],"Edge":[]}},"Main.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Msg"],"NewUrl":["String"],"UrlChange":["Navigation.Location"]}},"Page.Bfs.Menu.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Algo.Msg"],"ChangeSpeed":["Float"],"Redraw":["Maybe.Maybe Int"],"ChangeWallDensity":["Int"],"NoOp":[],"GridMsg":["Page.Bfs.Grid.Msg"]}},"Page.Bfs.Algo.Msg":{"args":[],"tags":{"Play":[],"Instant":[],"Step":[],"Pause":[]}}},"aliases":{"Navigation.Location":{"args":[],"type":"{ href : String , host : String , hostname : String , protocol : String , origin : String , port_ : String , pathname : String , search : String , hash : String , username : String , password : String }"}},"message":"Main.Msg"},"versions":{"elm":"0.18.0"}});
+    _user$project$Main$main(Elm['Main'], 'Main', {"types":{"unions":{"Page.Bfs.Tile.Msg":{"args":[],"tags":{"MakeWall":["( Int, Int )"],"ShowPosition":["( ( Int, Int ), Page.Bfs.Model.Tile )"],"ToggleWall":["( Int, Int )"],"NoOp":[]}},"Page.Bfs.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Algo.Msg"],"MenuMsg":["Page.Bfs.Menu.Msg"],"GridMsg":["Page.Bfs.Grid.Msg"]}},"Page.Bfs.Grid.Msg":{"args":[],"tags":{"TileMsg":["Page.Bfs.Tile.Msg"],"AddRandomPoint":["Int"]}},"Maybe.Maybe":{"args":["a"],"tags":{"Just":["a"],"Nothing":[]}},"Page.Bfs.Model.Tile":{"args":[],"tags":{"Path":[],"Empty":[],"Start":[],"Wall":[],"End":[],"Visited":[],"Edge":[]}},"Main.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Msg"],"NewUrl":["String"],"UrlChange":["Navigation.Location"]}},"Page.Bfs.Menu.Msg":{"args":[],"tags":{"BfsMsg":["Page.Bfs.Algo.Msg"],"ChangeSpeed":["Float"],"Redraw":["Maybe.Maybe Int"],"ChangeWallDensity":["Int"],"NoOp":[],"GridMsg":["Page.Bfs.Grid.Msg"]}},"Page.Bfs.Algo.Msg":{"args":[],"tags":{"Play":[],"SetStartTime":["Time.Time"],"Instant":[],"Step":[],"Pause":[],"SetEndTime":["Time.Time"]}}},"aliases":{"Time.Time":{"args":[],"type":"Float"},"Navigation.Location":{"args":[],"type":"{ href : String , host : String , hostname : String , protocol : String , origin : String , port_ : String , pathname : String , search : String , hash : String , username : String , password : String }"}},"message":"Main.Msg"},"versions":{"elm":"0.18.0"}});
 }
 
 if (typeof define === "function" && define['amd'])

@@ -5,7 +5,8 @@ import Set exposing (Set)
 import Html exposing (..)
 import Html.Events exposing (onClick)
 import Html.Attributes exposing (disabled)
-import Time
+import Time exposing (Time)
+import Task
 import Page.Bfs.Model as Model
     exposing
         ( Model
@@ -22,9 +23,11 @@ type Msg
     | Step
     | Play
     | Pause
+    | SetStartTime Time
+    | SetEndTime Time
 
 
-update : Msg -> Model -> Model
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Instant ->
@@ -64,22 +67,45 @@ update msg model =
                         _ ->
                             go (runBfs model)
             in
-                newModel
+                ( newModel, Cmd.none )
 
         Step ->
             let
                 newModel =
                     runBfs model
             in
-                newModel
+                ( newModel
+                , case newModel.status of
+                    Found _ ->
+                        Task.perform SetEndTime Time.now
+
+                    _ ->
+                        Cmd.none
+                )
 
         Play ->
-            { model
+            ( { model
                 | status = Running
-            }
+              }
+            , Task.perform SetStartTime Time.now
+            )
 
         Pause ->
-            { model | status = Paused }
+            ( { model | status = Paused }, Cmd.none )
+
+        SetStartTime startTime ->
+            let
+                time =
+                    model.time
+            in
+                ( { model | time = { time | start = startTime, end = Nothing } }, Cmd.none )
+
+        SetEndTime endTime ->
+            let
+                time =
+                    model.time
+            in
+                ( { model | time = { time | end = Just endTime } }, Cmd.none )
 
 
 runBfs : Model -> Model
@@ -178,7 +204,7 @@ runBfs model =
         }
 
 
-{-| Find all accessibles Tiles surrounding a Tile
+{-| Find all accessible Tiles surrounding a Tile
 and if any of the found Tile is the end tag it.
 Assuming the edge has a wall on top and bottom and the end is its left hand side
 

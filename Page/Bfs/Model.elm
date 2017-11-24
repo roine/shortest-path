@@ -40,6 +40,10 @@ type alias Model =
     , end : ( Int, Int )
     , visited : Dict ( Int, Int ) Direction
     , seed : Int
+    , time :
+        { start : Time
+        , end : Maybe Time
+        }
     }
 
 
@@ -53,6 +57,10 @@ initialModel =
     , end = ( 0, 0 )
     , visited = Dict.empty
     , seed = 1
+    , time =
+        { start = 0
+        , end = Nothing
+        }
     }
 
 
