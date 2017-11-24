@@ -5,12 +5,14 @@ import Html exposing (..)
 import Html.Attributes exposing (value, selected, style)
 import Html.Events exposing (onInput, onClick)
 import Time
+import Set
+import Task
+import Style.Menu as Style
+import Style.Tile as Style
 import Page.Bfs.Model exposing (Model, initialModel, Tile(..), Status(..))
 import Page.Bfs.Grid as Grid
 import Page.Bfs.Tile as Tile
 import Page.Bfs.Algo as Bfs
-import Set
-import Task
 
 
 -- UPDATE
@@ -87,26 +89,18 @@ update msg model =
 
 view : Model -> Html Msg
 view model =
-    div [ menuStyle ]
-        [ div [ menuHeadStyle ]
+    div [ Style.menu ]
+        [ div [ Style.menuHead ]
             [ div
-                [ style
-                    [ ( "background", Tile.toColour Start )
-                    , ( "color", "#fff" )
-                    , ( "padding", "10px" )
-                    ]
+                [ Style.menuStart
                 ]
                 [ text "Home" ]
             , div
-                [ style
-                    [ ( "background", Tile.toColour (End) )
-                    , ( "color", "#fff" )
-                    , ( "padding", "10px" )
-                    ]
+                [ Style.menuEnd
                 ]
                 [ text "Work" ]
             ]
-        , div [ menuBodyStyle ]
+        , div [ Style.menuBody ]
             [ h1 [] [ Html.text "Configuration" ]
             , span [] [ Html.text "Wall Density" ]
             , select
@@ -213,24 +207,4 @@ view model =
                         text <| toString mousePosition
                 ]
             ]
-        ]
-
-
-menuHeadStyle =
-    Html.Attributes.style []
-
-
-menuBodyStyle =
-    Html.Attributes.style [ ( "padding", "10px" ) ]
-
-
-menuStyle : Html.Attribute Msg
-menuStyle =
-    Html.Attributes.style
-        [ ( "background", "#f5f5f7" )
-        , ( "width", "15vw" )
-        , ( "box-sizing", "border-box" )
-        , ( "display", "inline-block" )
-        , ( "box-shadow", "0 2px 3px rgba(0,0,0,0.5)" )
-        , ( "border-radius", "0 0 3px 0" )
         ]

@@ -23,6 +23,7 @@ import Color.Manipulate
 import Color.Convert
 import Color.Blending
 import Page.Bfs.Model as Model exposing (Model, Direction(..), Tile(..))
+import Style.Tile as Style
 
 
 -- Tile
@@ -47,23 +48,22 @@ toColour tile =
             "url(#wall)"
 
         Empty ->
-            "#fff"
+            Style.empty
 
         Start ->
-            "#aa6001"
+            Style.start
 
         End ->
-            "#eb1c24"
+            Style.end
 
         Visited ->
-            Color.rgb 228 246 240
-                |> Color.Convert.colorToHex
+            Style.visited
 
         Edge ->
-            "#88AFD7"
+            Style.edge
 
         Path ->
-            "#C1B244"
+            Style.path
 
 
 pointToDirection : ( Int, Int ) -> ( Int, Int ) -> Direction

@@ -14,6 +14,6 @@ home =
 
 route =
     oneOf
-        [ map (BfsRoute) top
+        [ map BfsRoute top
         , map DijkstraRoute (s "dijkstra")
         ]

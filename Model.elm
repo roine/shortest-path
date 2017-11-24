@@ -12,10 +12,12 @@ import Set exposing (Set)
 import Navigation
 import Route exposing (Route)
 import Page.Bfs.Model as BfsModel exposing (Tile)
+import Page.Dijkstra.Model as DijkstraModel
 
 
 type alias Model =
     { bfs : BfsModel.Model
+    , dijkstra : DijkstraModel.Model
     , history : Maybe Route
     }
 
@@ -23,7 +25,8 @@ type alias Model =
 initialModel : Model
 initialModel =
     { bfs = BfsModel.initialModel
-    , history = Route.home
+    , dijkstra = DijkstraModel.initialModel
+    , history = Nothing
     }
 
 

@@ -7,11 +7,12 @@ import Html.Events exposing (onClick)
 import Time
 import Navigation
 import UrlParser as Url exposing ((</>), (<?>), s, int, stringParam, top)
+import Set
 import Route exposing (Route(..), route)
 import Model exposing (Model)
 import Page.Bfs
 import Page.Bfs.Model exposing (Tile(..), Status(..))
-import Set
+import Page.Dijkstra
 
 
 -- MODEL
@@ -22,10 +23,25 @@ init location =
     let
         initialModel =
             Model.initialModel
+
+        page =
+            Url.parsePath route location
     in
-        ( initialModel
-        , Cmd.batch [ Cmd.map BfsMsg (Page.Bfs.initialCmd initialModel.bfs) ]
+        ( { initialModel | history = page }
+        , initialCmd page initialModel
         )
+
+
+initialCmd page model =
+    case page of
+        Nothing ->
+            Cmd.none
+
+        Just BfsRoute ->
+            Cmd.map BfsMsg (Page.Bfs.initialCmd model.bfs)
+
+        Just DijkstraRoute ->
+            Cmd.map DijkstraMsg (Page.Dijkstra.initialCmd model.dijkstra)
 
 
 
@@ -34,6 +50,7 @@ init location =
 
 type Msg
     = BfsMsg Page.Bfs.Msg
+    | DijkstraMsg Page.Dijkstra.Msg
     | UrlChange Navigation.Location
     | NewUrl String
 
@@ -48,9 +65,16 @@ update msg model =
             in
                 ( { model | bfs = newModel }, Cmd.map BfsMsg cmd )
 
+        DijkstraMsg subMsg ->
+            let
+                ( newModel, cmd ) =
+                    Page.Dijkstra.update subMsg model.dijkstra
+            in
+                ( { model | dijkstra = newModel }, Cmd.map DijkstraMsg cmd )
+
         UrlChange location ->
             ( { model | history = Url.parsePath route location }
-            , Cmd.none
+            , initialCmd (Url.parsePath route location) model
             )
 
         NewUrl url ->
@@ -70,13 +94,13 @@ view model =
             model.bfs
     in
         div []
-            [ button [ onClick (NewUrl "dijkstra") ] [ text "dijsktra" ]
-            , button [ onClick (NewUrl "/") ] [ text "bfs" ]
+            [ button [ onClick (NewUrl "/") ] [ text "bfs" ]
+            , button [ onClick (NewUrl "dijkstra") ] [ text "dijsktra" ]
             , viewRoute model
             ]
 
 
-viewRoute { history, bfs } =
+viewRoute { history, bfs, dijkstra } =
     case history of
         Nothing ->
             text "Not Found"
@@ -84,11 +108,10 @@ viewRoute { history, bfs } =
         Just route ->
             case route of
                 BfsRoute ->
-                    Html.map BfsMsg
-                        (Page.Bfs.view bfs)
+                    Html.map BfsMsg (Page.Bfs.view bfs)
 
                 DijkstraRoute ->
-                    text "dijkstra"
+                    Html.map DijkstraMsg (Page.Dijkstra.view dijkstra)
 
 
 
@@ -97,7 +120,15 @@ viewRoute { history, bfs } =
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.batch [ Sub.map BfsMsg (Page.Bfs.subscriptions model.bfs) ]
+    case model.history of
+        Nothing ->
+            Sub.none
+
+        Just BfsRoute ->
+            Sub.map BfsMsg (Page.Bfs.subscriptions model.bfs)
+
+        Just DijkstraRoute ->
+            Sub.map DijkstraMsg (Page.Dijkstra.subscriptions model.dijkstra)
 
 
 

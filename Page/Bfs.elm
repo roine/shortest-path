@@ -12,14 +12,7 @@ import Set
 import Task
 
 
-width_ =
-    100
-
-
-height_ =
-    50
-
-
+initialCmd : Model -> Cmd Msg
 initialCmd model =
     Task.perform (always (GridMsg (Grid.addRandom model.seed))) (Task.succeed ())
 
@@ -30,6 +23,7 @@ type Msg
     | MenuMsg Menu.Msg
 
 
+update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         BfsMsg subMsg ->
@@ -54,6 +48,7 @@ update msg model =
                 ( newModel, Cmd.map MenuMsg cmd )
 
 
+subscriptions : Model -> Sub Msg
 subscriptions model =
     case model.status of
         Running ->
@@ -63,6 +58,7 @@ subscriptions model =
             Sub.none
 
 
+view : Model -> Html Msg
 view model =
     div []
         [ Html.map MenuMsg (Menu.view model)

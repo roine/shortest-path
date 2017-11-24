@@ -10,6 +10,8 @@ import Html exposing (..)
 import Html.Attributes
 import Page.Bfs.Tile as Tile
 import Page.Bfs.Model as Model exposing (Model, Tile(..))
+import Style.Tile as Style
+import Style.Grid as Style
 
 
 dimensions : Int
@@ -43,34 +45,14 @@ update msg model =
     case msg of
         AddRandomPoint seed ->
             let
-                endSeed =
-                    seed
-
-                randomEnd : Generator ( Int, Int )
-                randomEnd =
-                    Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
-
-                randomEndSeed =
-                    Random.step randomEnd (Random.initialSeed endSeed)
-
                 pointsEnd =
-                    Tuple.first randomEndSeed
-
-                startSeed =
-                    seed + 1
-
-                randomStart : Generator ( Int, Int )
-                randomStart =
-                    Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
-
-                randomStartSeed =
-                    Random.step randomStart (Random.initialSeed startSeed)
+                    randomSinglePoint seed
 
                 pointsStart =
-                    Tuple.first randomStartSeed
+                    randomSinglePoint (seed + 1)
 
                 wallsSeed =
-                    seed
+                    seed + 2
 
                 walls : Int -> Int
                 walls density =
@@ -85,16 +67,18 @@ update msg model =
 
                 wallsPoints =
                     Tuple.first randomWallsSeed
+
+                newPoints =
+                    Dict.insert pointsEnd (End) model.points
+                        |> Dict.insert pointsStart Start
+                        |> (\p ->
+                                List.map (\points -> ( points, Wall )) wallsPoints
+                                    |> Dict.fromList
+                                    |> Dict.union p
+                           )
             in
                 ( { model
-                    | points =
-                        Dict.insert pointsEnd (End) model.points
-                            |> Dict.insert pointsStart Start
-                            |> (\p ->
-                                    List.map (\points -> ( points, Wall )) wallsPoints
-                                        |> Dict.fromList
-                                        |> Dict.union p
-                               )
+                    | points = newPoints
                     , end = pointsEnd
                     , start = pointsStart
                     , edges = Set.fromList [ pointsStart ]
@@ -115,6 +99,17 @@ update msg model =
                 ( newModel, Cmd.map TileMsg cmd )
 
 
+randomSinglePoint : Int -> ( Int, Int )
+randomSinglePoint seed =
+    let
+        randomPoint : Generator ( Int, Int )
+        randomPoint =
+            Random.pair (Random.int 0 (width_ - 1)) (Random.int 0 (height_ - 1))
+    in
+        Random.step randomPoint (Random.initialSeed seed)
+            |> Tuple.first
+
+
 isWithin : ( Int, Int ) -> Bool
 isWithin ( pointX, pointY ) =
     pointX >= 0 && pointY >= 0 && pointX <= width_ - 1 && pointY <= height_ - 1
@@ -133,14 +128,14 @@ view model =
         heightList =
             (List.range 1 height_)
     in
-        div [ mainStyle ]
+        div [ Style.gridMain ]
             [ svg
                 [ width <| toString <| Tile.dimensions * width_
                 , height <| toString <| Tile.dimensions * height_
-                , Html.Attributes.map never gridStyle
+                , Html.Attributes.map never Style.tile
                 ]
                 ([ defs []
-                    [ Svg.map never <| gradientWall "wall" ]
+                    [ Svg.map never <| Style.gradientWall "wall" ]
                  ]
                     ++ (List.concatMap
                             (\y ->
@@ -154,37 +149,3 @@ view model =
                        )
                 )
             ]
-
-
-gridStyle : Html.Attribute Never
-gridStyle =
-    Html.Attributes.style
-        [ ( "margin", "0 auto" )
-        , ( "display", "block" )
-        , ( "border", "1px solid lightblue" )
-        ]
-
-
-mainStyle =
-    Html.Attributes.style
-        [ ( "width", "85vw" )
-        , ( "padding", "10px" )
-        , ( "box-sizing", "border-box" )
-        , ( "display", "inline-block" )
-        , ( "vertical-align", "top" )
-        ]
-
-
-gradientWall : String -> Svg Never
-gradientWall id_ =
-    linearGradient
-        [ id id_
-        , x1 "1"
-        , x2 "1"
-        , y1 "1"
-        , y2 "0"
-        ]
-        [ stop [ offset "0%", stopColor "#888" ] []
-        , stop [ offset "49%", stopColor "#ccc" ] []
-        , stop [ offset "100%", stopColor "#aaa" ] []
-        ]
